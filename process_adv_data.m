@@ -9,7 +9,7 @@ warning off;
 run_params = readtable('run_parameters.ods');
 warning on; 
 
-runs = [5];
+runs = [3];
 
 plot_data_checking = 0;
 plot_raw_profs = 1;
@@ -445,7 +445,9 @@ for n = 1:length(runs)
     rho_a = 1.2; % kg/m3
     rho_w = 1000; % kg/m3
     nu_w = 1e-6; % m2/s
-    CD = 2.0e-3;  % drag coeff. *** UPDATE FROM SAVELYEV ET AL 2020 ***
+%     CD = 2.0e-3;  % drag coeff. 
+    z0 = 6.7e-4*(U10/cp_dom)^2.6*A_rms;    % *** FROM SAVELYEV ET AL 2020 ***
+    CD = vonkarman^2*(log(10/z0)).^(-2); 
     z_anem = 0.8 - run_params.WaterDepth_m(runs(n));
     U10 = run_params.WindSpeed_m_s(runs(n))*vonkarman/sqrt(CD)/(log(z_anem/10) + vonkarman/sqrt(CD));
     u_tau_a_CD = sqrt(CD)*U10;
