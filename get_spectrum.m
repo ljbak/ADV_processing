@@ -6,7 +6,11 @@ function [E, f] = get_spectrum(q_fluct, fs)
 q_fluct = naninterp(q_fluct);
 
 % signal divisions
-Ldiv = 2048;
+if length(q_fluct) > 5*2048
+    Ldiv = 2048;
+else
+    Ldiv = 2^nextpow2(length(q_fluct)/5);
+end
 Ndiv = floor(size(q_fluct,1)/Ldiv*2) - 1;
 
 if ~mod(Ldiv,2)
