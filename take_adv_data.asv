@@ -7,8 +7,7 @@
 % spanwise location and vertical axis so that the transducer is 7 cm below
 % still surface level (i.e. top of sampling volume is at the still surface
 % level). this is home (origin). note: positive displacements move carriage
-% away from the motor. for y<0 cases: home is when transducer is at
-% y = -20cm.
+% away from the motor
 %
 % 2. SET UP ADV SOFTWARE: Set up ADV in Nortek software and align top left
 % corner of software wind with top left corner of screen. This allows the
@@ -26,9 +25,9 @@ stage.setCurrentPositionAsHome('y');
 stage.setCurrentPositionAsHome('z');
 
 %% inputs for each set of runs
-windspeed = 0;  % speed of wind motor for this set of runs (Hz)
+windspeed = 30;  % speed of wind motor for this set of runs (Hz)
 spanwise_sign = 1; % +1 for side of channel away from the horz motor (including centerline); -1 for side of channel near the horz motor
-fetch = 4.9;  % fetch for this set of runs (m)
+fetch = 6.8;  % fetch for this set of runs (m)
 
 % cursor set-up and execute experiment
 % cursor control and adv record button
@@ -43,20 +42,18 @@ buffer_time = 3;       % time to wait between end of recording and start of bisl
 
 % ADV run parameters 
 warning off; 
-run_params = readtable('G:\My Drive\MP in OSBL\luci adv data\run 211203\run_parameters.ods');
+run_params = readtable('G:\My Drive\MP in OSBL\luci adv data\run 211202\run_parameters.ods');
 warning on;
 
 % select the set of runs corresponding to the current wind speed and fetch
 if spanwise_sign == 1
     runs = find(run_params.WindMotorFreq_Hz==windspeed & run_params.ROI_x_m==fetch & run_params.ROI_y_m>=0);
-    y_offset = 0;
 else
     runs = find(run_params.WindMotorFreq_Hz==windspeed & run_params.ROI_x_m==fetch & run_params.ROI_y_m<0);
-    y_offset = 200;
 end
 
 % % starting after fault
-% runs = runs(runs>101);
+% runs = runs(runs>16);
 
 N_runs = length(runs);
 
@@ -67,7 +64,7 @@ try
 
         % move bislide to next sampling position & wait for completion
         fprintf('moving bislide...')
-        stage.moveMotorAbsolute('y',run_params.ROI_y_m(n)*1000 + y_offset); % y axis move (mm)
+        stage.moveMotorAbsolute('y',run_params.ROI_y_m(n)*1000); % y axis move (mm)
         stage.moveMotorAbsolute('z',-run_params.ROI_z2_m(n)*1000); % z axis move (mm) (switch sign)
         fprintf('complete\n')
         

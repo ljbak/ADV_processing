@@ -33,15 +33,15 @@ if nargin > 3
     [L2,S2,R2] = svd(UVW2_adv, 'econ');
     UVW2_lab = UVW2_adv*R2;
     
-    U_lab2 = reshape(UVW2_lab(:,1), size(U_adv));
-    V_lab2 = reshape(UVW2_lab(:,2), size(U_adv));
+    U_lab = reshape(UVW2_lab(:,1), size(U_adv));
+    V_lab = reshape(UVW2_lab(:,2), size(U_adv));
     W2_lab = reshape(UVW2_lab(:,3), size(U_adv));
     varargout{1} = W2_lab;
     varargout{2} = R2;
     
-    % average the rotated U and V components computed with W1 and W2
-    U_lab = mean(cat(3, U_lab, U_lab2), 3);
-    V_lab = mean(cat(3, V_lab, V_lab2), 3);
+%     % average the rotated U and V components computed with W1 and W2
+%     U_lab = mean(cat(3, U_lab, U_lab2), 3);
+%     V_lab = mean(cat(3, V_lab, V_lab2), 3);
 end
 
 end

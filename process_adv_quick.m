@@ -28,13 +28,13 @@ end
 f_Eu = figure;
 f_Ew = figure;
 
-snr_low = zeros(size(fn)); cor_low = zeros(size(fn));
-snr_cen = zeros(size(fn)); cor_cen = zeros(size(fn));
+% snr_low = zeros(size(fn)); cor_low = zeros(size(fn));
+% snr_cen = zeros(size(fn)); cor_cen = zeros(size(fn));
 
 N_bins_shift = 20;
 
 % cell with ADV data file name(s)
-fn = {'wind-only.323.21.Vectrino Profiler.00001.mat'}; 
+fn = {'wind-only.337.21.Vectrino Profiler.00000.mat'}; 
 
 for n = 1:length(fn)
     fprintf(['\n' fn{n} '\n']);
@@ -196,8 +196,8 @@ for n = 1:length(fn)
     w1_mean_raw = squeeze(nanmean(w1,1));
     w2_mean_raw = squeeze(nanmean(w2,1));
 
-    snr_low(n) = snr_mean(1,3); cor_low(n) = cor_mean(1,3);
-    snr_cen(n) = max(snr_mean(:,3)); cor_cen(n) = max(cor_mean(:,3));
+%     snr_low(n) = snr_mean(1,3); cor_low(n) = cor_mean(1,3);
+%     snr_cen(n) = max(snr_mean(:,3)); cor_cen(n) = max(cor_mean(:,3));
     
     % plots
     if plot_raw_profs

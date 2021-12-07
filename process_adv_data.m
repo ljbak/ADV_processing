@@ -5,7 +5,7 @@ close all
 % plotting options
 plot_data_checking = 1;
 plot_raw_profs = 1;
-plot_shift_profs = 1;
+plot_shift_profs = 0;
 plot_phs_profs = 0;
 
 if plot_raw_profs
@@ -32,10 +32,12 @@ addpath 'C:\Users\ljbak\My Drive\MATLAB\adv-velocity-matlab'
 addpath 'C:\Users\ljbak\My Drive\MATLAB\fm-toolbox'
 addpath 'H:\My Drive\MATLAB\fm-toolbox'
 
-run_params = readtable('run_parameters - prelim.ods');
+run_params = readtable('run_parameters.ods');
 warning on; 
 
-runs = [13:15];%[1:2:8]; % row vector
+% Np = 7; % profile number
+% runs = run_params.Run(run_params.profile==Np)'; 
+runs = [3:5]; % row vector
 
 % snr_low = zeros(size(runs)); cor_low = zeros(size(runs));
 % snr_cen = zeros(size(runs)); cor_cen = zeros(size(runs));
@@ -51,6 +53,7 @@ for n = runs
     t = Data.Profiles_TimeStamp;
     fs = 1/diff(t(1:2));
     rng = Data.Profiles_Range;
+    ss_idx = logical(rng>=.044 & rng<=.056); % index of sweet spot 
 
     u_raw = Data.Profiles_VelX;
     v_raw = Data.Profiles_VelY;
@@ -64,28 +67,7 @@ for n = runs
     snr = cat(3, Data.Profiles_SNRBeam1, Data.Profiles_SNRBeam2, Data.Profiles_SNRBeam3, Data.Profiles_SNRBeam4);
 
     amp = cat(3, Data.Profiles_AmpBeam1, Data.Profiles_AmpBeam2, Data.Profiles_AmpBeam3, Data.Profiles_AmpBeam4);
-    
-    %% rotate velocities into laboratory coords
-    % this works well for cases without waves, not as well for cases with
-    % waves. When traversing the ADV: could calibrate using data well below
-    % surface/waves, variance could be maxed in streamwise direction
-%     if n == 1  % calibration case: current, no wind
-%         [R, u_raw, v_raw, w1_raw, w2_raw] = rotate_vels(u_raw, v_raw, w1_raw, w2_raw); 
-% %         [R, u_raw_r, v_raw_r, w1_raw_r] = rotate_vels(u_raw, v_raw, w1_raw);
-%         disp(R)
-        %%
-%         figure;
-%         for i = 500:2000
-%             t0 = i;
-%     subplot(121); quiver3(0*rng,0*rng,rng,u_raw(t0,:),v_raw(t0,:),w1_raw(t0,:));
-%     view(3);axis equal; axis([-5e-3 5e-3 -5e-3 5e-3])
-%     subplot(122); quiver3(zeros(1,size(u_raw_r,2)),zeros(1,size(u_raw_r,2)),rng(1:size(u_raw_r,2)),u_raw_r(t0,:),v_raw_r(t0,:),w1_raw_r(t0,:));
-%     view(3);axis equal; axis([-5e-3 5e-3 -5e-3 5e-3])
-%     pause(1/100)
-%         end
-%%
-%     else
-
+   
     
     %% data checking
     if plot_data_checking
@@ -108,7 +90,8 @@ for n = runs
     
     %% free surface
     % from bottom distance
-    btm_z(btm_z == 0) = nan;
+    btm_z_mean = nanmean(btm_z);
+    btm_z(abs(btm_z - btm_z_mean) > .1) = nan;
     btm_z_mean = nanmean(btm_z);
     A_rms = rms(btm_z - btm_z_mean,'omitnan');
     fprintf('mean surface distance = %1.3f cm, wave height = %1.3f cm\n',btm_z_mean*100, A_rms*100);
@@ -133,9 +116,9 @@ for n = runs
 %     figure; c = adv_prof_time_plot(t(1:tlim),rng,amp_mag_sm(1:tlim,:));
 %     title('Amp magnitude smoothed/filtered');
     
-%     figure; plot(t(1:tlim),surf_z(1:tlim),'b-',btm_t(1:tlim/5),btm_z(1:tlim/5),'rx:'); 
-%     xlabel('t [s]'); ylabel('free surface [m]'); xlim([t(1) t(tlim)])
-%     legend('surface from amplitude','surface from bottom check')
+    figure; plot(t(1:tlim),surf_z(1:tlim),'b-',btm_t(1:tlim/5),btm_z(1:tlim/5),'rx:'); 
+    xlabel('t [s]'); ylabel('free surface [m]'); xlim([t(1) t(tlim)])
+    legend('surface from amplitude','surface from bottom check')
     
     Ebar_norm = 1/(btm_t(end-10)-btm_t(10))*trapz(naninterp(btm_z(10:end-10) - btm_z_mean).^2);  % Ebar/(g*rho)
     H_rms = sqrt(8*Ebar_norm);
@@ -163,10 +146,6 @@ for n = runs
         w1 = w1_raw;
         w2 = w2_raw;
         
-%         [u_raw_pdf, u_raw_range] = pdf_var(u_raw(:), 100, 0);
-%         figure; plot(u_raw_range, u_raw_pdf, 'bo');
-%         xlabel('u [m/s]'); ylabel('PDF'); title('u raw velocity pdf')
-
 %         figs = 1;
 %         for i = 1:size(u_raw,2)
 %     %         if i==15; figs = 1; end
@@ -200,10 +179,21 @@ for n = runs
         
         % velocity pdfs
         figure(f_pdf); 
-        subplot(221); hold on; histogram(u,100); xlabel('u [m/s]'); ylabel('count')
-        subplot(222); hold on; histogram(v,100); xlabel('v [m/s]'); ylabel('count')
-        subplot(223); hold on; histogram(w1,100); xlabel('w1 [m/s]'); ylabel('count')
-        subplot(224); hold on; histogram(w2,100); xlabel('w2 [m/s]'); ylabel('count')
+        [u_raw_pdf, u_raw_range] = pdf_var(u(:), 100, 0);
+        subplot(221); plot(u_raw_range, u_raw_pdf, '.');
+        xlabel('u [m/s]'); ylabel('PDF'); hold on
+        
+        [v_raw_pdf, v_raw_range] = pdf_var(v(:), 100, 0);
+        subplot(222); plot(v_raw_range, v_raw_pdf, '.');
+        xlabel('v [m/s]'); ylabel('PDF'); hold on 
+
+        [w1_raw_pdf, w1_raw_range] = pdf_var(w1(:), 100, 0);
+        subplot(224); plot(w1_raw_range, w1_raw_pdf, '.');
+        xlabel('w1 [m/s]'); ylabel('PDF'); hold on 
+
+        [w2_raw_pdf, w2_raw_range] = pdf_var(w2(:), 100, 0);
+        subplot(224); plot(w2_raw_range, w2_raw_pdf, '.');
+        xlabel('w2 [m/s]'); ylabel('PDF'); hold on 
     end
     
     %% raw mean profiles (function of z)
@@ -256,11 +246,11 @@ for n = runs
     uu_prof = nanmean(uu_raw,1);
     vv_prof = nanmean(vv_raw,1);
     w1w1_prof = nanmean(w1w1_raw,1);
-    uw1_prof = nanmean(uw1_raw,1);
+    uw2_prof = nanmean(uw2_raw,1);
     
     if plot_raw_profs
         figure(f_restress_raw);
-        h = adv_prof_subplots(z(1,:),[uu_prof', vv_prof', w1w1_prof', uw1_prof'], ...
+        h = adv_prof_subplots(z(1,:),[uu_prof', vv_prof', w1w1_prof', uw2_prof'], ...
             'z [m]',{'\langle u''u''\rangle [m/s]','\langle v''v''\rangle [m/s]','\langle w_1''w_1''\rangle [m/s]','\langle u''w_1''\rangle [m/s]'});
     end
     
@@ -274,8 +264,8 @@ for n = runs
         U_running_rms = zeros(floor(nt/N),length(rng));
         V_running_avg = zeros(floor(nt/N),length(rng));
         V_running_rms = zeros(floor(nt/N),length(rng));
-        W1_running_avg = zeros(floor(nt/N),length(rng));
-        W1_running_rms = zeros(floor(nt/N),length(rng));
+        W2_running_avg = zeros(floor(nt/N),length(rng));
+        W2_running_rms = zeros(floor(nt/N),length(rng));
 
         for i = 1:floor(nt/N)
             U_i = u(1:i*N,:);
@@ -288,10 +278,10 @@ for n = runs
             V_i = v_fluct_raw(1:i*N,:);
             V_running_rms(i,:) = (rms(V_i,'omitnan'));
 
-            W1_i = w1(1:i*N,:);
-            W1_running_avg(i,:) = (nanmean(W1_i,1));
-            W1_i = w1_fluct_raw(1:i*N,:);
-            W1_running_rms(i,:) = (rms(W1_i,'omitnan'));
+            W2_i = w2(1:i*N,:);
+            W2_running_avg(i,:) = (nanmean(W2_i,1));
+            W2_i = w2_fluct_raw(1:i*N,:);
+            W2_running_rms(i,:) = (rms(W2_i,'omitnan'));
         end
 
         % plot
@@ -315,11 +305,11 @@ for n = runs
 
         % W1
         figure; subplot(211); 
-        plot((1:N:floor(nt/N)*N)/fs/60,nanmean(W1_running_avg,2)); title('Mean W1 convergence'); hold on; grid on
+        plot((1:N:floor(nt/N)*N)/fs/60,nanmean(W2_running_avg,2)); title('Mean W2 convergence'); hold on; grid on
         xlabel('time [min]'); ylabel('\langleW1\rangle_t [m/s]'); 
 
         subplot(212); 
-        plot((1:N:floor(nt/N)*N)/fs/60,nanmean(W1_running_rms,2)); title('RMS W1 convergence'); hold on; grid on
+        plot((1:N:floor(nt/N)*N)/fs/60,nanmean(W2_running_rms,2)); title('RMS W2 convergence'); hold on; grid on
         xlabel('time [min]'); ylabel('W1_{RMS,t} [m/s]');         
     end
     
@@ -351,10 +341,10 @@ for n = runs
     
     
     %% velocity power spectra 
-    u_advec = u_mean_raw(1);%u_mean(end-5);  % advection velocity for Taylor's hyp/Doppler shift 
+    u_advec = u_mean_raw(1);%u_mean(end-5);  % advection velocity for Taylor's hyp/Doppler shift
 
-    [E_u, f] = get_spectrum(u_fluct_raw(:,10:20), fs);
-    [E_w1, ~] = get_spectrum(w1_fluct_raw(:,10:20), fs);
+    [E_u, f] = get_spectrum(u_fluct_raw(:,ss_idx), fs);
+    [E_w1, ~] = get_spectrum(w1_fluct_raw(:,ss_idx), fs);
 
     figure(f_Eu);
     loglog(f,E_u); hold on; 
@@ -388,116 +378,116 @@ for n = runs
     end
     
     
-    %% velocity in free surface coords
-    % z positive upward, negative underwater, 0 at mean surface level  
-    if run_params.WindMotorFreq_Hz(n) > 0
-        % shifted z coord (z-tilde)
-        z_shift = z - repmat(eta_lr,1,size(z,2)).*exp(k_dom*z);   
-
-        %% data points for which full wave orbital is available (based on 10th
-        % and 90th percentile surface elevation)
-        eta_c1 = 0;%interp1(N_eta, ctrs_eta, .9);
-        eta_c2 = 0;%interp1(N_eta, ctrs_eta, .1);
-
-        z_shift_c1 = rng(end) - btm_z_mean - eta_c1;  
-        z_shift_c2 = rng(1) - btm_z_mean - eta_c2;
-        
-        if z_shift_c1 < z_shift_c2
-            z_shift_c2 = rng(1) - btm_z_mean;
-        end
-
-        z_c1_c2_idx = z_shift(:) < z_shift_c1 & z_shift(:) > z_shift_c2;
-
-%         figure; adv_prof_time_plot(t(1:tlim),rng,z_shift(1:tlim,:));
-%         hold on; plot(t(1:tlim),(btm_z_mean+eta_lr(1:tlim))*1000,'k-')
-
-        % calculate phase using hilbert transform
-        u_fluct_bar = nanmean(u_fluct_raw,2);
-    %     for i = 1:size(u_fluct0_sm,2)
-    %         u_fluct0_sm(:,i) = smooth(u_fluct0_sm(:,i),5);
-    %     end
-        Y = hilbert(naninterp(u_fluct_bar));
-        phs = atan2(imag(Y),real(Y));
-        phs = repmat(phs,1,size(u,2));
-
-        % average over phase
-        N_phs = 12;
-        u_phs_mean = zeros(length(rng),N_phs);
-        for i = 1:length(rng)
-            [u_phs_mean(i,:), phs_bins] = condition_vars(u(:,i),phs(:,i),N_phs,0);
-        end    
-        if plot_phs_profs
-    %     figure; pcolor(phs_bins*180/pi, rng, u_phs_mean'); shading flat; 
-    %     c = colorbar; c.Label.String = 'u [m/s]'; xlabel('\phi [deg]'); ylabel('z [m]')
-
-            figure; 
-            adv_phs_prof_plot(rng,u_phs_mean,phs_bins,'$z$ [m]','$\langleu(z, \phi)\rangle$ [m/s]');
-        end
-
-        % shifted mean velocity
-        [u_mean_shift,z_shift_prof,N] = condition_vars(u(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
-        v_mean_shift = condition_vars(v(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
-        w1_mean_shift = condition_vars(w1(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
-        w2_mean_shift = condition_vars(w2(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
-
-        % shifted, phase-avg mean velocity
-        [u_mean_shift_phs,z_shift_prof,phs_bins,N] = condition_vars2(u(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
-        v_mean_shift_phs = condition_vars2(v(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
-        w1_mean_shift_phs = condition_vars2(w1(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
-        w2_mean_shift_phs = condition_vars2(w2(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
-
-        if plot_phs_profs
-            figure; 
-            adv_phs_prof_plot(z_shift_prof,u_mean_shift_phs,phs_bins,'$\tilde{z}$ [m]','$\langle u(\tilde{z}, \phi)\rangle$ [m/s]');
-        end
-
-        if plot_shift_profs
-            figure(f_umean_shift);
-            adv_prof_subplots(z_shift_prof,[u_mean_shift, v_mean_shift, w1_mean_shift, w2_mean_shift], ...
-                '$\tilde{z}$ [m]',{'\langle u\rangle [m/s]','\langle v\rangle [m/s]','\langle w_1\rangle [m/s]','\langle w_2\rangle [m/s]'});
-        end
-        
-        % shifted velocity fluctuations
-        u_fluct_shift = u - interp1(z_shift_prof,u_mean_shift,z_shift);
-        v_fluct_shift = v - interp1(z_shift_prof,v_mean_shift,z_shift);
-        w1_fluct_shift = w1 - interp1(z_shift_prof,w1_mean_shift,z_shift);
-        w2_fluct_shift = w2 - interp1(z_shift_prof,w2_mean_shift,z_shift);
-
-        % instantaneous shifted Re stresses
-        uu_shift = u_fluct_shift.*u_fluct_shift;
-        vv_shift = v_fluct_shift.*v_fluct_shift;
-        vw1_shift = v_fluct_shift.*w1_fluct_shift;
-        w1w1_shift = w1_fluct_shift.*w1_fluct_shift;
-        w2w2_shift = w2_fluct_shift.*w2_fluct_shift;
-        uw1_shift = u_fluct_shift.*w1_fluct_shift;
-        uw2_shift = u_fluct_shift.*w2_fluct_shift;
-        w1w2_shift = w1_fluct_shift.*w2_fluct_shift;
-
-        % shifted Reynolds stress profiles 
-        uu_shift_prof = condition_vars(uu_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
-        vv_shift_prof = condition_vars(vv_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
-        w1w1_shift_prof = condition_vars(w1w1_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
-        uw1_shift_prof = condition_vars(uw1_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
-        vw1_shift_prof = condition_vars(vw1_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
-
-        if plot_shift_profs
-            figure(f_uu_shift);
-            adv_prof_subplots(z_shift_prof,[uu_shift_prof, vv_shift_prof, w1w1_shift_prof, vw1_shift_prof, uw1_shift_prof], ...
-                '$\tilde{z}$ [m]',{'\langle u''u''\rangle [m/s]','\langle v''v''\rangle [m/s]','\langle w_1''w_1''\rangle [m/s]','\langle v''w_1''\rangle [m/s]','\langle u''w_1''\rangle [m/s]'});
-        end
-
-        %% shifted, phase-avg Reynolds stresses   
-        uu_shift_phs = condition_vars2(uu_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
-        vv_shift_phs = condition_vars2(vv_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
-        w1w1_shift_phs = condition_vars2(w1w1_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
-        uw1_shift_phs = condition_vars2(uw1_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
-
-        if plot_phs_profs
-            figure; 
-            adv_phs_prof_plot(z_shift_prof,uw1_shift_phs,phs_bins,'$\tilde{z}$ [m]','$\langle u''w''(\tilde{z}, \phi)\rangle$ [m/s]');
-        end
-
-    end
+%     %% velocity in free surface coords
+%     % z positive upward, negative underwater, 0 at mean surface level  
+%     if run_params.WindMotorFreq_Hz(n) > 0
+%         % shifted z coord (z-tilde)
+%         z_shift = z - repmat(eta_lr,1,size(z,2)).*exp(k_dom*z);   
+% 
+%         %% data points for which full wave orbital is available (based on 10th
+%         % and 90th percentile surface elevation)
+%         eta_c1 = interp1(N_eta, ctrs_eta, .9);
+%         eta_c2 = interp1(N_eta, ctrs_eta, .1);
+% 
+%         z_shift_c1 = rng(end) - btm_z_mean - eta_c1;  
+%         z_shift_c2 = rng(1) - btm_z_mean - eta_c2;
+%         
+%         if z_shift_c1 < z_shift_c2
+%             z_shift_c2 = rng(1) - btm_z_mean;
+%         end
+% 
+%         z_c1_c2_idx = z_shift(:) < z_shift_c1 & z_shift(:) > z_shift_c2;
+% 
+% %         figure; adv_prof_time_plot(t(1:tlim),rng,z_shift(1:tlim,:));
+% %         hold on; plot(t(1:tlim),(btm_z_mean+eta_lr(1:tlim))*1000,'k-')
+% 
+%         % calculate phase using hilbert transform
+%         u_fluct_bar = nanmean(u_fluct_raw,2);
+%     %     for i = 1:size(u_fluct0_sm,2)
+%     %         u_fluct0_sm(:,i) = smooth(u_fluct0_sm(:,i),5);
+%     %     end
+%         Y = hilbert(naninterp(u_fluct_bar));
+%         phs = atan2(imag(Y),real(Y));
+%         phs = repmat(phs,1,size(u,2));
+% 
+%         % average over phase
+%         N_phs = 12;
+%         u_phs_mean = zeros(length(rng),N_phs);
+%         for i = 1:length(rng)
+%             [u_phs_mean(i,:), phs_bins] = condition_vars(u(:,i),phs(:,i),N_phs,0);
+%         end    
+%         if plot_phs_profs
+%     %     figure; pcolor(phs_bins*180/pi, rng, u_phs_mean'); shading flat; 
+%     %     c = colorbar; c.Label.String = 'u [m/s]'; xlabel('\phi [deg]'); ylabel('z [m]')
+% 
+%             figure; 
+%             adv_phs_prof_plot(rng,u_phs_mean,phs_bins,'$z$ [m]','$\langleu(z, \phi)\rangle$ [m/s]');
+%         end
+% 
+%         % shifted mean velocity
+%         [u_mean_shift,z_shift_prof,N] = condition_vars(u(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
+%         v_mean_shift = condition_vars(v(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
+%         w1_mean_shift = condition_vars(w1(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
+%         w2_mean_shift = condition_vars(w2(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
+% 
+%         % shifted, phase-avg mean velocity
+%         [u_mean_shift_phs,z_shift_prof,phs_bins,N] = condition_vars2(u(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
+%         v_mean_shift_phs = condition_vars2(v(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
+%         w1_mean_shift_phs = condition_vars2(w1(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
+%         w2_mean_shift_phs = condition_vars2(w2(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
+% 
+%         if plot_phs_profs
+%             figure; 
+%             adv_phs_prof_plot(z_shift_prof,u_mean_shift_phs,phs_bins,'$\tilde{z}$ [m]','$\langle u(\tilde{z}, \phi)\rangle$ [m/s]');
+%         end
+% 
+%         if plot_shift_profs
+%             figure(f_umean_shift);
+%             adv_prof_subplots(z_shift_prof,[u_mean_shift, v_mean_shift, w1_mean_shift, w2_mean_shift], ...
+%                 '$\tilde{z}$ [m]',{'\langle u\rangle [m/s]','\langle v\rangle [m/s]','\langle w_1\rangle [m/s]','\langle w_2\rangle [m/s]'});
+%         end
+%         
+%         % shifted velocity fluctuations
+%         u_fluct_shift = u - interp1(z_shift_prof,u_mean_shift,z_shift);
+%         v_fluct_shift = v - interp1(z_shift_prof,v_mean_shift,z_shift);
+%         w1_fluct_shift = w1 - interp1(z_shift_prof,w1_mean_shift,z_shift);
+%         w2_fluct_shift = w2 - interp1(z_shift_prof,w2_mean_shift,z_shift);
+% 
+%         % instantaneous shifted Re stresses
+%         uu_shift = u_fluct_shift.*u_fluct_shift;
+%         vv_shift = v_fluct_shift.*v_fluct_shift;
+%         vw1_shift = v_fluct_shift.*w1_fluct_shift;
+%         w1w1_shift = w1_fluct_shift.*w1_fluct_shift;
+%         w2w2_shift = w2_fluct_shift.*w2_fluct_shift;
+%         uw1_shift = u_fluct_shift.*w1_fluct_shift;
+%         uw2_shift = u_fluct_shift.*w2_fluct_shift;
+%         w1w2_shift = w1_fluct_shift.*w2_fluct_shift;
+% 
+%         % shifted Reynolds stress profiles 
+%         uu_shift_prof = condition_vars(uu_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
+%         vv_shift_prof = condition_vars(vv_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
+%         w1w1_shift_prof = condition_vars(w1w1_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
+%         uw1_shift_prof = condition_vars(uw1_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
+%         vw1_shift_prof = condition_vars(vw1_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),N_bins_shift,0);
+% 
+%         if plot_shift_profs
+%             figure(f_uu_shift);
+%             adv_prof_subplots(z_shift_prof,[uu_shift_prof, vv_shift_prof, w1w1_shift_prof, vw1_shift_prof, uw1_shift_prof], ...
+%                 '$\tilde{z}$ [m]',{'\langle u''u''\rangle [m/s]','\langle v''v''\rangle [m/s]','\langle w_1''w_1''\rangle [m/s]','\langle v''w_1''\rangle [m/s]','\langle u''w_1''\rangle [m/s]'});
+%         end
+% 
+%         %% shifted, phase-avg Reynolds stresses   
+%         uu_shift_phs = condition_vars2(uu_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
+%         vv_shift_phs = condition_vars2(vv_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
+%         w1w1_shift_phs = condition_vars2(w1w1_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
+%         uw1_shift_phs = condition_vars2(uw1_shift(z_c1_c2_idx),z_shift(z_c1_c2_idx),phs(z_c1_c2_idx),[N_bins_shift,N_phs],[0 0]);
+% 
+%         if plot_phs_profs
+%             figure; 
+%             adv_phs_prof_plot(z_shift_prof,uw1_shift_phs,phs_bins,'$\tilde{z}$ [m]','$\langle u''w''(\tilde{z}, \phi)\rangle$ [m/s]');
+%         end
+% 
+%     end
     
     
 %     %% turbulence parameters
