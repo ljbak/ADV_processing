@@ -3,8 +3,8 @@ clear
 close all
 
 % plotting options
-plot_data_checking = 1;
-plot_raw_profs = 1;
+plot_data_checking = 0;
+plot_raw_profs = 0;
 plot_shift_profs = 0;
 plot_phs_profs = 0;
 
@@ -35,9 +35,19 @@ addpath 'H:\My Drive\MATLAB\fm-toolbox'
 run_params = readtable('run_parameters.ods');
 warning on; 
 
+% runs = [2:4]; % row vector
 % Np = 7; % profile number
 % runs = run_params.Run(run_params.profile==Np)'; 
-runs = [3:5]; % row vector
+
+% enter nan to allow all values of that parameter
+windsp = 60; % wind motor frequency
+fetch = 6.8; % fetch
+spanws = 0; % spanwise position
+roi_z2 = -.09; % ROI z2 (top of ROI)
+runs = run_params.Run( (isnan(windsp)|(run_params.WindMotorFreq_Hz == windsp)) & ...
+    (isnan(fetch)|(run_params.ROI_x_m == fetch)) & ...
+    (isnan(spanws)|(run_params.ROI_y_m == spanws)) & ...
+    (isnan(roi_z2)|(run_params.ROI_z2_m == roi_z2)) )';
 
 % snr_low = zeros(size(runs)); cor_low = zeros(size(runs));
 % snr_cen = zeros(size(runs)); cor_cen = zeros(size(runs));
@@ -99,12 +109,12 @@ for n = runs
     % z coord w.r.t. water surface
     z = repmat(rng,size(u_raw,1),1) - btm_z_mean;  
 
-    % from amplitude
-    amp_thres = 60; % signal amplitude threshold for detecting surface
-    [surf_z, ~, ~, ~] = get_free_surface(amp, amp_thres, rng);
-    
-    % displacement relative to mean surface level (positive upward, negative downward)
-    eta_hr = surf_z - btm_z_mean;  % high-resolution eta
+%     % from amplitude
+%     amp_thres = 60; % signal amplitude threshold for detecting surface
+%     [surf_z, ~, ~, ~] = get_free_surface(amp, amp_thres, rng);
+%     
+%     % displacement relative to mean surface level (positive upward, negative downward)
+%     eta_hr = surf_z - btm_z_mean;  % high-resolution eta
     if run_params.WindMotorFreq_Hz(n) > 0
         eta_lr = interp1(btm_t,btm_z,t) - btm_z_mean; % low-resolution eta (interpolated to full resolution)
     else
@@ -116,9 +126,9 @@ for n = runs
 %     figure; c = adv_prof_time_plot(t(1:tlim),rng,amp_mag_sm(1:tlim,:));
 %     title('Amp magnitude smoothed/filtered');
     
-    figure; plot(t(1:tlim),surf_z(1:tlim),'b-',btm_t(1:tlim/5),btm_z(1:tlim/5),'rx:'); 
-    xlabel('t [s]'); ylabel('free surface [m]'); xlim([t(1) t(tlim)])
-    legend('surface from amplitude','surface from bottom check')
+%     figure; plot(t(1:tlim),surf_z(1:tlim),'b-',btm_t(1:tlim/5),btm_z(1:tlim/5),'rx:'); 
+%     xlabel('t [s]'); ylabel('free surface [m]'); xlim([t(1) t(tlim)])
+%     legend('surface from amplitude','surface from bottom check')
     
     Ebar_norm = 1/(btm_t(end-10)-btm_t(10))*trapz(naninterp(btm_z(10:end-10) - btm_z_mean).^2);  % Ebar/(g*rho)
     H_rms = sqrt(8*Ebar_norm);
@@ -127,7 +137,7 @@ for n = runs
     [N_eta,edges_eta] = histcounts(eta_lr_nonan,100,'normalization','cdf');
     ctrs_eta = edges_eta(2:end) - diff(edges_eta)/2;
     [N_eta,ia] = unique(N_eta); ctrs_eta = ctrs_eta(ia);
-    figure; histogram(abs(eta_lr_nonan),100); xlabel('\eta [m]'); ylabel('PDF')
+%     figure; histogram(abs(eta_lr_nonan),100); xlabel('\eta [m]'); ylabel('PDF')
     
     % dominant wave amplitude from 90th %ile of eta (since eta distribution
     % is cut off by adv settings - if had full eta distribution, would
@@ -140,12 +150,7 @@ for n = runs
     % filter velocity: use PST (Parsheh N_bins_shift10) remove spikes
 %     if exist([run_params.ADVDataFileName{n} '_despiked.mat'],'file')
 %         load([run_params.ADVDataFileName{n} '_despiked.mat']);
-%     else
-        u = u_raw;
-        v = v_raw;
-        w1 = w1_raw;
-        w2 = w2_raw;
-        
+%     else        
 %         figs = 1;
 %         for i = 1:size(u_raw,2)
 %     %         if i==15; figs = 1; end
@@ -161,6 +166,31 @@ for n = runs
 %     
 %         save([run_params.ADVDataFileName{n} '_despiked.mat'],'u','v','w1','w2');
 % %     end
+
+    % correct velocities for ADV rotation
+    if exist(sprintf('R_%03d.mat',run_params.calibrationRun(n)),'file')
+        load(sprintf('R_%03d.mat',run_params.calibrationRun(n)))
+
+        [UVW2_lab] = [u_raw(:),v_raw(:),w2_raw(:)]*R;
+        u = reshape(UVW2_lab(:,1), size(u_raw));
+        v = reshape(UVW2_lab(:,2), size(u_raw));
+        w2 = reshape(UVW2_lab(:,3), size(u_raw));
+        [UVW1_lab] = [u_raw(:),v_raw(:),w1_raw(:)]*R;
+        w1 = reshape(UVW1_lab(:,3), size(u_raw));
+
+    else
+        u = u_raw;
+        v = v_raw;
+        w1 = w1_raw;
+        w2 = w2_raw;
+    end
+
+    % correct velocity signs (so that +u points in same direction as wind,
+    % +v is towards glass wall, and +w is up)
+    if run_params.ROI_y_m(n) >= 0
+        v = -v;
+        u = -u;
+    end
     
     % remove measurements above water surface
     echo_offset = 6e-3; % [m] distance below surface in which ADV velocities are contaminated by surface echo
@@ -172,10 +202,37 @@ for n = runs
         w2(i,rng >= cutoff_rng) = nan;
     end
     
-%     % plots
+    %% reject and interpolate samples
+    cor_thres = 70;
+    snr_thres = 10;
+    reject_idx = logical( (cor(:,:,3) < cor_thres | snr(:,:,3) < snr_thres) & ~isnan(u) );
+    fprintf('reject %2.f%% of samples\n',sum(reject_idx(:))/numel(reject_idx)*100);
     if plot_data_checking
-%         figure;
-%         adv_prof_time_subplots(rng,t,cat(3,u,v,w1,w2),{'u [m/s]','v [m/s]','w_1 [m/s]','w_2 [m/s]'});
+        figure;
+        rejidx_mean = sum(reject_idx,1)/size(reject_idx,1)*100;
+        plot(rejidx_mean,z(1,:)); xlabel('% rejected'); ylabel('z [m]')
+    end
+    
+    u(reject_idx) = nan;
+    v(reject_idx) = nan;
+    w1(reject_idx) = nan;
+    w2(reject_idx) = nan;
+    
+    %% temporal smoothing
+    kL = 0;
+    u0=[]; v0=[]; w10=[]; w20=[];
+    for j = 1:size(u,2)
+        [u0(:,j), t_range] = gauss_position(u(:,j),kL);
+        [v0(:,j), ~] = gauss_position(v(:,j),kL);
+        [w10(:,j), ~] = gauss_position(w1(:,j),kL);
+        [w20(:,j), ~] = gauss_position(w2(:,j),kL);
+    end
+    u = u0; v = v0; w1 = w10; w2 = w20; t = t(t_range);
+    
+    figure;
+    adv_prof_time_subplots(rng,t,cat(3,u,v,w2),{'u [m/s]','v [m/s]','w2 [m/s]'});    
+    % plots
+    if plot_data_checking
         
         % velocity pdfs
         figure(f_pdf); 
@@ -212,7 +269,7 @@ for n = runs
         % raw mean vel
         figure(f_u_mean_raw);
         h = adv_prof_subplots(z(1,:),[u_mean_raw', v_mean_raw', w1_mean_raw', w2_mean_raw'], ...
-            'z [m]',{'\langle u\rangle [m/s]','\langle v\rangle [m/s]','\langle w_1\rangle [m/s]','\langle w_2\rangle [m/s]'});
+            'z [m]',{'\langle u\rangle [m/s]','\langle v\rangle [m/s]','\langle w_1\rangle [m/s]','\langle w2\rangle [m/s]'});
 %         for i = 1:length(h); set(h(i),'YLim',[.04 .07]); end
     end
     
@@ -313,6 +370,7 @@ for n = runs
         xlabel('time [min]'); ylabel('W1_{RMS,t} [m/s]');         
     end
     
+    % plot velocity time series
     
     %% bricker and monismith wave-turb decomposition
 %     if run_params.WindMotorFreq_Hz(n) > 0
@@ -344,11 +402,13 @@ for n = runs
     u_advec = u_mean_raw(1);%u_mean(end-5);  % advection velocity for Taylor's hyp/Doppler shift
 
     [E_u, f] = get_spectrum(u_fluct_raw(:,ss_idx), fs);
-    [E_w1, ~] = get_spectrum(w1_fluct_raw(:,ss_idx), fs);
+    [E_w, ~] = get_spectrum(w2_fluct_raw(:,ss_idx), fs);
+    f_cutoff = fs/kL;
+    f_cutoff_idx = logical(f(f<f_cutoff));
 
     figure(f_Eu);
-    loglog(f,E_u); hold on; 
-    if n == length(runs)
+    loglog(f(f_cutoff_idx),E_u(f_cutoff_idx)); hold on; 
+    if n == runs(1)
         [~,A_idx] = min(abs(f-1));
         A = E_u(A_idx);
         loglog(f(f>.1),A*f(f>.1).^(-5/3),'-k')
@@ -357,17 +417,17 @@ for n = runs
     ylabel('E_u(f) [m^2/s^2/Hz]')
     
     figure(f_Ew);
-    loglog(f,E_w1); hold on; 
-    if n == length(runs)
+    loglog(f(f_cutoff_idx),E_w(f_cutoff_idx)); hold on; 
+    if n == runs(1)
         [~,A_idx] = min(abs(f-1));
-        A = E_w1(A_idx);
+        A = E_w(A_idx);
         loglog(f(f>.1),A*f(f>.1).^(-5/3),'-k')
     end
     xlabel('f [s^{-1}]')
     ylabel('E_w(f) [m^2/s^2/Hz]')
     
     if run_params.WindMotorFreq_Hz(n) > 0
-        [~,f_dom_idx] = max(E_w1);  % maximum of vertical vel power spectrum
+        [~,f_dom_idx] = max(E_w);  % maximum of vertical vel power spectrum
         f_dom_o = f(f_dom_idx);   % observed (doppler-shifted) dominant wave freq 
         f_dom = 1/(1/f_dom_o - -2*pi*u_advec/9.81);  % actual dominant wave freq (corrected for doppler shift)
         cp_dom = 9.81/(2*pi*f_dom);   % dominant phase speed
@@ -444,7 +504,7 @@ for n = runs
 %         if plot_shift_profs
 %             figure(f_umean_shift);
 %             adv_prof_subplots(z_shift_prof,[u_mean_shift, v_mean_shift, w1_mean_shift, w2_mean_shift], ...
-%                 '$\tilde{z}$ [m]',{'\langle u\rangle [m/s]','\langle v\rangle [m/s]','\langle w_1\rangle [m/s]','\langle w_2\rangle [m/s]'});
+%                 '$\tilde{z}$ [m]',{'\langle u\rangle [m/s]','\langle v\rangle [m/s]','\langle w_1\rangle [m/s]','\langle w2\rangle [m/s]'});
 %         end
 %         
 %         % shifted velocity fluctuations

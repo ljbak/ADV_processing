@@ -31,6 +31,11 @@ W1_lab = reshape(UVW_lab(:,3), size(U_adv));
 if nargin > 3
     UVW2_adv = [U_adv(:), V_adv(:), W2_adv(:)];
     [L2,S2,R2] = svd(UVW2_adv, 'econ');
+    for i = 1:3
+        if R2(i,i) < 0
+            R2(:,i) = -R2(:,i);
+        end
+    end
     UVW2_lab = UVW2_adv*R2;
     
     U_lab = reshape(UVW2_lab(:,1), size(U_adv));

@@ -26,9 +26,9 @@ stage.setCurrentPositionAsHome('y');
 stage.setCurrentPositionAsHome('z');
 
 %% inputs for each set of runs
-windspeed = 0;  % speed of wind motor for this set of runs (Hz)
+windspeed = 45;  % speed of wind motor for this set of runs (Hz)
 spanwise_sign = 1; % +1 for side of channel away from the horz motor (including centerline); -1 for side of channel near the horz motor
-fetch = 4.9;  % fetch for this set of runs (m)
+fetch = 6.8;  % fetch for this set of runs (m)
 
 % cursor set-up and execute experiment
 % cursor control and adv record button
@@ -39,11 +39,11 @@ import java.awt.Robot;
 import java.awt.event.*;
 mouse = Robot;
 
-buffer_time = 3;       % time to wait between end of recording and start of bislide move (s)
+buffer_time = 60;       % time to wait between end of recording and start of bislide move (s)
 
 % ADV run parameters 
 warning off; 
-run_params = readtable('G:\My Drive\MP in OSBL\luci adv data\run 211203\run_parameters.ods');
+run_params = readtable('G:\My Drive\MP in OSBL\luci adv data\run 211209\run_parameters.ods');
 warning on;
 
 % select the set of runs corresponding to the current wind speed and fetch
@@ -56,7 +56,7 @@ else
 end
 
 % % starting after fault
-% runs = runs(runs>101);
+% runs = runs(runs>3);
 
 N_runs = length(runs);
 

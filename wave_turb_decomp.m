@@ -8,8 +8,8 @@ function [Y_wave, f] = wave_turb_decomp(u, fs, plot_on)
 u = naninterp(u);
 
 % signal divisions
-Ldiv = 2048;
-Ndiv = floor(size(u,1)/Ldiv*2) - 1;
+Ldiv = 2048; %size(u,1) - mod(size(u,1),2); %
+Ndiv = floor(size(u,1)/Ldiv*2) - 1; %1; %
 S2 = zeros(Ldiv,1);
 phs2 = zeros(Ldiv,1);
 
@@ -42,13 +42,13 @@ if plot_on
 end
 
 % l and r bounds of wave peak [Hz]
-wavepeak_l = 2.2;
-wavepeak_r = 5.2;
+wavepeak_l = 1.2;
+wavepeak_r = 3;
 wave_idx = f>wavepeak_l & f<wavepeak_r;
 wave_idx_neg = f<-wavepeak_l & f>-wavepeak_r;  % negative side of spectrum
 
 % l and r bound of turbulence range (inertial subrange) [Hz]
-turbrange_l = 1.5;
+turbrange_l = 0.5;%4.5;
 turbrange_r = 20;
 turb_idx = f>turbrange_l & f<turbrange_r;
 

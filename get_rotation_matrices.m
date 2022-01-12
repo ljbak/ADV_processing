@@ -12,7 +12,7 @@ run_params = readtable('run_parameters.ods');
 warning on; 
 
 % run IDs corresponding to calibration cases
-runs = [1]; % row vector
+runs = run_params.Run(run_params.WindMotorFreq_Hz==0)'; % row vector
 
 for n = runs
     fprintf('\nwind = %2.f Hz, current = %2.f Hz, %s\n', run_params.WindMotorFreq_Hz(n), ...
@@ -39,6 +39,6 @@ for n = runs
 
     % print and save
     disp(R)
-    save(sprintf('R_run%i.mat',n),'R');
+    save(sprintf('R_%03d.mat',n),'R');
 
 end
