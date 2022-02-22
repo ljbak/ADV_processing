@@ -28,7 +28,7 @@ prof_idx = (isnan(windsp)|(run_params.WindMotorFreq_Hz == windsp)) & ...
     (isnan(fetch)|(run_params.ROI_x_m == fetch)) & ...
     (isnan(spanws)|(run_params.ROI_y_m == spanws)) & ...
     run_params.WindMotorFreq_Hz > 0;
-profs = unique(run_params.profile(prof_idx))'; % profile numbers
+profs = fliplr(unique(run_params.profile(prof_idx))'); % profile numbers
 
 for n = profs
     load(sprintf('results_%02d.mat',n))
@@ -49,15 +49,21 @@ for n = profs
     
     % u mean shifted
     figure(figs(3));
-    adv_prof_subplots(z_shift_prof,[u_mean_shift],..., v_mean_shift, w2_mean_shift], ...
+    adv_prof_subplots(z_shift_prof,[u_mean_shift, v_mean_shift, w2_mean_shift], ...
         '$\tilde{z}$ [m]',{'$\langle u\rangle$ [m/s]','$\langle v\rangle$ [m/s]','$\langle w_2\rangle$ [m/s]'}, lg);
     hold on;
+% 
+%     % re stress shifted
+%     figure(figs(4));
+%     adv_prof_subplots(z_shift_prof,sqrt([uu_shift_prof, vv_shift_prof, w2w2_shift_prof, uw2_shift_prof]), ...
+%         '$\tilde{z}$ [m]',{'$\sqrt{\langle u''u''\rangle}$ [m/s]','$\sqrt{\langle v''v''\rangle}$ [m/s]','$\sqrt{\langle w_2''w_2''\rangle}$ [m/s]', ...
+%         '$\sqrt{\langle u''w_2''\rangle}$ [m/s]'}, lg);
+%     hold on;
 
-    % re stress shifted
+    % u mean shifted and uw
     figure(figs(4));
-    adv_prof_subplots(z_shift_prof,sqrt([uu_shift_prof, vv_shift_prof, w2w2_shift_prof, uw2_shift_prof]), ...
-        '$\tilde{z}$ [m]',{'$\sqrt{\langle u''u''\rangle}$ [m/s]','$\sqrt{\langle v''v''\rangle}$ [m/s]','$\sqrt{\langle w_2''w_2''\rangle}$ [m/s]', ...
-        '$\sqrt{\langle u''w_2''\rangle}$ [m/s]'}, lg);
+    adv_prof_subplots(z_shift_prof,[u_mean_shift,sqrt(uw2_shift_prof)],..., v_mean_shift, w2_mean_shift], ...
+        '$\tilde{z}$ [m]',{'$\langle u\rangle$ [m/s]','$\sqrt{\langle u''w''\rangle}$ [m/s]'}, lg);
     hold on;
 
     %% lo-res profiles
@@ -101,7 +107,7 @@ if lg
         idx = find(run_params.profile == profs(i));
 %         lstr{i} = sprintf('$x=%1.1f$m, \n$y=%.2f$m, \n$U_w=%2.f$m/s', ...
 %             run_params.ROI_x_m(idx(1)),run_params.ROI_y_m(idx(1)),run_params.WindSpeed_m_s(idx(1)));
-        lstr{i} = sprintf('$U_w=%2.f$m/s', run_params.WindSpeed_m_s(idx(1)));
+        lstr{i} = sprintf('$U_\\infty=%2.f$m/s', run_params.WindSpeed_m_s(idx(1)));
     end
 
     for i = 1:nfigs
@@ -114,5 +120,5 @@ end
 
 for i = 1:nfigs
     figure(figs(i));
-    goodplot([8 4])
+    goodplot([10 4])
 end

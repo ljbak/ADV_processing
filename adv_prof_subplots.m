@@ -5,6 +5,8 @@ function h = adv_prof_subplots(z,q,zlab,qlab,lg)
 % qlab: q axes label strings (nq x 1 cell containing strings)
 % lg: 0 or 1, include a legend in the right-most axes (optional)
 
+% CHANGE TO CELL ARRAYS TO USE UNCERTAINTY/PLOT EBARS
+
 if nargin == 4
     lg = 0;
 end

@@ -3,7 +3,7 @@ function lh = adv_profile_plot(q_prof,rng,c,s,ms,ls)
 % c, symbol s, linestyle l, and markersize ms. returns handle to line lh
 
 if nargin==2
-    lh = plot(q_prof,rng,'.','linewidth',1,'markersize',10);
+    lh = plot(q_prof,rng,'.','linewidth',1,'markersize',12);
 elseif nargin==3
     lh = plot(q_prof,rng,'color',c,'symbol','+','linewidth',1);
 elseif nargin==4
