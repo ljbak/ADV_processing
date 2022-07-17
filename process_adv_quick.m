@@ -8,7 +8,7 @@ addpath 'H:\My Drive\MATLAB\fm-toolbox'
 
 % plotting options
 
-plot_data_checking = 1;
+plot_data_checking = 0;
 plot_raw_profs = 1;
 plot_shift_profs = 0;
 
@@ -34,7 +34,8 @@ f_Ew = figure;
 N_bins_shift = 20;
 
 % cell with ADV data file name(s)
-fn = {'wind-only.337.21.Vectrino Profiler.00000.mat'}; 
+fn = {'H:\My Drive\MP in OSBL\luci adv data\test 210802\wind_only.214.21.Vectrino Profiler.00001.mat'};
+%     'H:\My Drive\MP in OSBL\luci adv data\run 211203\wind-only.337.21.Vectrino Profiler.00002.mat'}; 
 
 for n = 1:length(fn)
     fprintf(['\n' fn{n} '\n']);
@@ -311,8 +312,8 @@ for n = 1:length(fn)
 
 %     u_fluct_raw = naninterp(u_fluct_raw);
 %     w1_fluct_raw = naninterp(w1_fluct_raw);
-    [E_u, f] = get_spectrum(u_fluct_raw(:,10:20), fs);
-    [E_w1, ~] = get_spectrum(w1_fluct_raw(:,10:20), fs);
+    [E_u, f] = get_spectrum(u_fluct_raw, fs); %(:,10:20)
+    [E_w1, ~] = get_spectrum(w1_fluct_raw, fs);
 
     figure(f_Eu);
     loglog(f,E_u); hold on; 
